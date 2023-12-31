@@ -11,7 +11,7 @@ def main():
     cam = cv2.VideoCapture(2)
 
     # Two params to tune (put these in yaml file)
-    stereo = cv2.StereoBM.create(numDisparities=256, blockSize=15)
+    stereo = cv2.StereoBM.create(numDisparities=96, blockSize=5)
 
     # Display video feed and depth map
     while True:
