@@ -114,6 +114,135 @@ class tuneCam():
                 cv2.CV_16SC2)
             
             return LeftStereoMap, RightStereoMap
+        
+    def tuneDepthMap(self,paramFilePath):
+        paramFile = cv2.FileStorage(paramFilePath,cv2.FILE_STORAGE_READ)
+
+
+
+
+
+        Left_Stereo_Map_x = paramFile.getNode("Left_Stereo_Map_x").mat()
+        Left_Stereo_Map_y = paramFile.getNode("Left_Stereo_Map_y").mat()
+        Right_Stereo_Map_x = paramFile.getNode("Right_Stereo_Map_x").mat()
+        Right_Stereo_Map_y = paramFile.getNode("Right_Stereo_Map_y").mat()
+
+        paramFile.release()
+
+        def nothing(x):
+            pass 
+
+        # UI Stuff 
+        cv2.namedWindow('disp',cv2.WINDOW_NORMAL)
+        cv2.resizeWindow('disp',600,600)
+        cv2.createTrackbar('numDisparities','disp',1,17,nothing)
+        cv2.createTrackbar('blockSize','disp',5,50,nothing)
+        cv2.createTrackbar('preFilterType','disp',1,1,nothing)
+        cv2.createTrackbar('preFilterSize','disp',2,25,nothing)
+        cv2.createTrackbar('preFilterCap','disp',5,62,nothing)
+        cv2.createTrackbar('textureThreshold','disp',10,100,nothing)
+        cv2.createTrackbar('uniquenessRatio','disp',15,100,nothing)
+        cv2.createTrackbar('speckleRange','disp',0,100,nothing)
+        cv2.createTrackbar('speckleWindowSize','disp',3,25,nothing)
+        cv2.createTrackbar('disp12MaxDiff','disp',5,25,nothing)
+        cv2.createTrackbar('minDisparity','disp',5,25,nothing)
+
+        stereo = cv2.StereoBM_create()
+        cam = cv2.VideoCapture(2)
+
+        while True:
+
+            ret, frame = cam.read()
+            if not ret:
+                print("FAILURE")
+                break
+
+            height, width, _ = frame.shape
+            camL = frame[:, :width // 2, :]
+            camR = frame[:, width // 2:, :]
+
+
+            # retL, imgL = cameraL.read()
+            # retR, imgR = cameraR.read()
+
+            if ret:
+                # imgR_gray = cv2.cvtColor(imgR,cv2.COLOR_BGR2GRAY)
+                # imgL_gray = cv2.cvtColor(imgL,cv2.COLOR_BGR2GRAY)
+                imgL_gray = cv2.cvtColor(camL, cv2.COLOR_BGR2GRAY)
+                imgR_gray = cv2.cvtColor(camR, cv2.COLOR_BGR2GRAY)
+
+                LeftMap = cv2.remap(
+                    imgL_gray,
+                    Left_Stereo_Map_x,
+                    Left_Stereo_Map_y,
+                    cv2.INTER_LANCZOS4,
+                    cv2.BORDER_CONSTANT,
+                    0)
+                
+                RightMap = cv2.remap(
+                    imgR_gray,
+                    Right_Stereo_Map_x,
+                    Right_Stereo_Map_y,
+                    cv2.INTER_LANCZOS4,
+                    cv2.BORDER_CONSTANT,
+                    0)
+                
+                # Updating Cam Params 
+                numDisparities = cv2.getTrackbarPos('numDisparities','disp')*16
+                blockSize = cv2.getTrackbarPos('blockSize','disp')*2 + 5
+                preFilterType = cv2.getTrackbarPos('preFilterType','disp')
+                preFilterSize = cv2.getTrackbarPos('preFilterSize','disp')*2 + 5
+                preFilterCap = cv2.getTrackbarPos('preFilterCap','disp')
+                textureThreshold = cv2.getTrackbarPos('textureThreshold','disp')
+                uniquenessRatio = cv2.getTrackbarPos('uniquenessRatio','disp')
+                speckleRange = cv2.getTrackbarPos('speckleRange','disp')
+                speckleWindowSize = cv2.getTrackbarPos('speckleWindowSize','disp')*2
+                disp12MaxDiff = cv2.getTrackbarPos('disp12MaxDiff','disp')
+                minDisparity = cv2.getTrackbarPos('minDisparity','disp')
+
+                stereo.setNumDisparities(numDisparities)
+                stereo.setBlockSize(blockSize)
+                stereo.setPreFilterType(preFilterType)
+                stereo.setPreFilterSize(preFilterSize)
+                stereo.setPreFilterCap(preFilterCap)
+                stereo.setTextureThreshold(textureThreshold)
+                stereo.setUniquenessRatio(uniquenessRatio)
+                stereo.setSpeckleRange(speckleRange)
+                stereo.setSpeckleWindowSize(speckleWindowSize)
+                stereo.setDisp12MaxDiff(disp12MaxDiff)
+                stereo.setMinDisparity(minDisparity)
+                
+
+                disparityMap = stereo.compute(LeftMap,RightMap)
+                disparityMap = disparityMap.astype(np.float32)
+                disparityMap = (disparityMap/16.0 - minDisparity)/numDisparities
+                cv2.imshow("disp",disparityMap)
+
+                if cv2.waitKey(1) == 27:
+                    break 
+            else:
+                cam = cv2.VideoCapture(2)
+
+
+
+
+
+
+
+
+                
+            
+
+            
+
+
+
+
+
+        
+
+
+
 
 
 
@@ -122,15 +251,22 @@ def main():
     pathR = "./StereoImages/Right/"
 
     camCalibrate = tuneCam(pathL,pathR)
-    LeftStereoMap, RightStereoMap = camCalibrate.Calibration_Seperate(10,7)
+    paramPath = "./improved_params2.xml"
+    # LeftStereoMap, RightStereoMap = camCalibrate.Calibration_Seperate(10,7)
 
-    print("Saving paraeters ......")
-    cv_file = cv2.FileStorage("improved_params2.xml", cv2.FILE_STORAGE_WRITE)
-    cv_file.write("Left_Stereo_Map_x",LeftStereoMap[0])
-    cv_file.write("Left_Stereo_Map_y",LeftStereoMap[1])
-    cv_file.write("Right_Stereo_Map_x",RightStereoMap[0])
-    cv_file.write("Right_Stereo_Map_y",RightStereoMap[1])
-    cv_file.release()
+    # print("Saving paraeters ......")
+    # cv_file = cv2.FileStorage("improved_params2.xml", cv2.FILE_STORAGE_WRITE)
+    # cv_file.write("Left_Stereo_Map_x",LeftStereoMap[0])
+    # cv_file.write("Left_Stereo_Map_y",LeftStereoMap[1])
+    # cv_file.write("Right_Stereo_Map_x",RightStereoMap[0])
+    # cv_file.write("Right_Stereo_Map_y",RightStereoMap[1])
+    # cv_file.release()
+
+    camCalibrate.tuneDepthMap(paramPath)
+
+
+
+
 
 
 
